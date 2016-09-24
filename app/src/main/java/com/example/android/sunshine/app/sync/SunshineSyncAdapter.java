@@ -26,6 +26,7 @@ import android.preference.PreferenceManager;
 import android.support.annotation.IntDef;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
+import android.text.format.DateUtils;
 import android.text.format.Time;
 import android.util.Log;
 
@@ -36,6 +37,13 @@ import com.example.android.sunshine.app.R;
 import com.example.android.sunshine.app.Utility;
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.muzei.WeatherMuzeiSource;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.wearable.DataApi;
+import com.google.android.gms.wearable.PutDataMapRequest;
+import com.google.android.gms.wearable.PutDataRequest;
+import com.google.android.gms.wearable.Wearable;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -352,6 +360,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
                 weatherValues.put(WeatherContract.WeatherEntry.COLUMN_WEATHER_ID, weatherId);
 
                 cVVector.add(weatherValues);
+
             }
 
             int inserted = 0;
@@ -499,10 +508,79 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
                     SharedPreferences.Editor editor = prefs.edit();
                     editor.putLong(lastNotificationKey, System.currentTimeMillis());
                     editor.commit();
+
+                        updateWear(getContext(), largeIcon, weatherId, high, low);
+
                 }
+
                 cursor.close();
             }
         }
+    }
+
+    private void updateWear(Context context, Bitmap icon, int weatherId, double high, double low) {
+
+        String WEATHER_CONFIG_PATH = "/weather";
+        String TEMPERATURE_HIGH_KEY = "temp_high_key";
+        String TEMPERATURE_LOW_KEY = "temp_low_key";
+        String TEMPERATURE_ICON_KEY = "icon_key";
+        final GoogleApiClient googleApiClient;
+
+             System.out.println("Hey Nikhilll, I'm in updateWear function "+ high
+             +" "+low);
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+
+       googleApiClient = new GoogleApiClient.Builder(context)
+               .addApi(Wearable.API)
+               .addConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks() {
+                   @Override
+                   public void onConnected(Bundle bundle) {
+
+                       Log.v(LOG_TAG, "Google API Client was connected");
+                   }
+
+                   @Override
+                   public void onConnectionSuspended(int i) {
+                       Log.v(LOG_TAG, "Connection to Google API client was suspended");
+                   }
+               })
+               .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
+                   @Override
+                   public void onConnectionFailed(ConnectionResult connectionResult) {
+                       Log.e(LOG_TAG, "Connection to Google API client has failed");
+                   }
+               })
+               .build();
+
+        googleApiClient.connect();
+
+        boolean wearAvailable = googleApiClient.hasConnectedApi(Wearable.API);
+
+
+
+        PutDataMapRequest putDataMapRequest = PutDataMapRequest.create(WEATHER_CONFIG_PATH);
+        putDataMapRequest.getDataMap().putString(TEMPERATURE_HIGH_KEY, Utility.formatTemperature(context,high));
+        putDataMapRequest.getDataMap().putString(TEMPERATURE_LOW_KEY, Utility.formatTemperature(context,low));
+
+        System.out.println("HURRRAAAAAAAAAAAAAAAAAAAAAAAAAAYYYYYYY "+wearAvailable);
+
+        PutDataRequest putDataRequest = putDataMapRequest.asPutDataRequest();
+        Wearable.DataApi.putDataItem(googleApiClient,putDataRequest)
+                .setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
+                    @Override
+                    public void onResult(DataApi.DataItemResult dataItemResult) {
+                        if (dataItemResult.getStatus().isSuccess()){
+                            Log.i(LOG_TAG, "Weather Data Sent");
+                        }else
+                        {
+                           Log.i(LOG_TAG, "Not Sent");
+                        }
+                    }
+                });
+
+        googleApiClient.disconnect();
+
     }
 
     /**
