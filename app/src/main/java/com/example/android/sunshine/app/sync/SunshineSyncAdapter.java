@@ -26,7 +26,6 @@ import android.preference.PreferenceManager;
 import android.support.annotation.IntDef;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
-import android.text.format.DateUtils;
 import android.text.format.Time;
 import android.util.Log;
 
@@ -95,8 +94,41 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     public static final int LOCATION_STATUS_UNKNOWN = 3;
     public static final int LOCATION_STATUS_INVALID = 4;
 
+
+    public GoogleApiClient googleApiClient;
+
     public SunshineSyncAdapter(Context context, boolean autoInitialize) {
         super(context, autoInitialize);
+         setupGoogleApiClient();
+    }
+
+    private void setupGoogleApiClient() {
+
+
+        googleApiClient = new GoogleApiClient.Builder(getContext())
+                .addApi(Wearable.API)
+                .addConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks() {
+                    @Override
+                    public void onConnected(Bundle bundle) {
+
+                        Log.v(LOG_TAG, "Google API Client was connected");
+                    }
+
+                    @Override
+                    public void onConnectionSuspended(int i) {
+                        Log.v(LOG_TAG, "Connection to Google API client was suspended");
+                    }
+                })
+                .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
+                    @Override
+                    public void onConnectionFailed(ConnectionResult connectionResult) {
+                        Log.e(LOG_TAG, "Connection to Google API client has failed" +connectionResult);
+                    }
+                })
+                .build();
+
+        googleApiClient.connect();
+
     }
 
     @Override
@@ -524,36 +556,12 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
         String TEMPERATURE_HIGH_KEY = "temp_high_key";
         String TEMPERATURE_LOW_KEY = "temp_low_key";
         String TEMPERATURE_ICON_KEY = "icon_key";
-        final GoogleApiClient googleApiClient;
+
 
              System.out.println("Hey Nikhilll, I'm in updateWear function "+ high
              +" "+low);
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-
-       googleApiClient = new GoogleApiClient.Builder(context)
-               .addApi(Wearable.API)
-               .addConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks() {
-                   @Override
-                   public void onConnected(Bundle bundle) {
-
-                       Log.v(LOG_TAG, "Google API Client was connected");
-                   }
-
-                   @Override
-                   public void onConnectionSuspended(int i) {
-                       Log.v(LOG_TAG, "Connection to Google API client was suspended");
-                   }
-               })
-               .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
-                   @Override
-                   public void onConnectionFailed(ConnectionResult connectionResult) {
-                       Log.e(LOG_TAG, "Connection to Google API client has failed");
-                   }
-               })
-               .build();
-
-        googleApiClient.connect();
 
         boolean wearAvailable = googleApiClient.hasConnectedApi(Wearable.API);
 
