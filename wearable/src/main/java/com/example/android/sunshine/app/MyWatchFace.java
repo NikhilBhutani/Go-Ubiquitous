@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 
-package com.apricotlabs.wearable;
+package com.example.android.sunshine.app;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -41,13 +43,14 @@ import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.Asset;
 import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.DataEvent;
 import com.google.android.gms.wearable.DataEventBuffer;
-import com.google.android.gms.wearable.DataItem;
 import com.google.android.gms.wearable.DataMapItem;
 import com.google.android.gms.wearable.Wearable;
 
+import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -63,7 +66,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
     private static final Typeface NORMAL_TYPEFACE =
             Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL);
 
-
+    private static final String LOG_TAG = MyWatchFace.class.getSimpleName();
     private static final String WEATHER_CONFIG_PATH = "/weather";
     private static final String TEMPERATURE_HIGH_KEY = "temp_high_key";
     private static final String TEMPERATURE_LOW_KEY = "temp_low_key";
@@ -118,7 +121,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
         Calendar mCalendar;
         String highTempWeather;
         String lowTempWeather;
-
+        Bitmap weatherIcon;
 
 
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
@@ -156,18 +159,18 @@ public class MyWatchFace extends CanvasWatchFaceService {
                     .addOnConnectionFailedListener(this)
                     .build();
 
-
+            googleApiClient.connect();
 
             Resources resources = MyWatchFace.this.getResources();
             mYOffset = resources.getDimension(R.dimen.digital_y_offset);
             mDayDateYOffset = resources.getDimension(R.dimen.digital_daydate_y_offset);
             mBackgroundPaint = new Paint();
-            mBackgroundPaint.setColor(ContextCompat.getColor(MyWatchFace.this,R.color.background));
+            mBackgroundPaint.setColor(ContextCompat.getColor(MyWatchFace.this, R.color.background));
 
             mTextPaint = new Paint();
-            mTextPaint = createTextPaint(ContextCompat.getColor(MyWatchFace.this,R.color.digital_text));
-            mDayDateTextPaint = createTextPaint(ContextCompat.getColor(MyWatchFace.this,R.color.daydate_text));
-            linePaint = createTextPaint(ContextCompat.getColor(MyWatchFace.this,R.color.daydate_text));
+            mTextPaint = createTextPaint(ContextCompat.getColor(MyWatchFace.this, R.color.digital_text));
+            mDayDateTextPaint = createTextPaint(ContextCompat.getColor(MyWatchFace.this, R.color.daydate_text));
+            linePaint = createTextPaint(ContextCompat.getColor(MyWatchFace.this, R.color.daydate_text));
             mCalendar = Calendar.getInstance();
         }
 
@@ -314,7 +317,10 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 String day = SimpleDateFormat.getDateInstance(DateFormat.MEDIUM).format(mCalendar.getTimeInMillis());
                 canvas.drawText(day, bounds.centerX()-60, mDayDateYOffset, mDayDateTextPaint);
                 canvas.drawLine((bounds.width() / 2) - 30, (bounds.height() / 2) + 10, (bounds.width() / 2) + 30, (bounds.height() / 2) + 10, linePaint);
-
+                if(weatherIcon != null){
+                    Paint paint = new Paint();
+                    canvas.drawBitmap(weatherIcon, bounds.width() / 5, (bounds.height() / 2.0f) + mXOffset, paint);
+                }
             }
 
             canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
@@ -354,21 +360,24 @@ public class MyWatchFace extends CanvasWatchFaceService {
 
         @Override
         public void onConnected(@Nullable Bundle bundle) {
+            Log.v(LOG_TAG, "Google API Client was connected");
             Wearable.DataApi.addListener(googleApiClient, this);
         }
 
         @Override
         public void onConnectionSuspended(int i) {
-
+            Log.v(LOG_TAG, "Connection to Google API client was suspended");
         }
 
         @Override
         public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
+            Log.e(LOG_TAG, "Connection to Google API client has failed" + connectionResult);
         }
 
         @Override
         public void onDataChanged(DataEventBuffer dataEventBuffer) {
+
+            Log.v("Here you go ", "Data Synced");
 
             for(DataEvent event : dataEventBuffer){
                 if(DataEvent.TYPE_CHANGED == event.getType()){
@@ -378,6 +387,8 @@ public class MyWatchFace extends CanvasWatchFaceService {
                         DataMapItem dataMapItem = DataMapItem.fromDataItem(event.getDataItem());
                         highTempWeather = dataMapItem.getDataMap().getString(TEMPERATURE_HIGH_KEY);
                         lowTempWeather = dataMapItem.getDataMap().getString(TEMPERATURE_LOW_KEY);
+                        Asset icon = dataMapItem.getDataMap().getAsset(TEMPERATURE_ICON_KEY);
+                        weatherIcon = loadBitmapFromAsset(icon);
 
                         System.out.println("YAAAAAAAAAAAYYY! onDatachanged"+highTempWeather+" "+lowTempWeather);
 
@@ -389,5 +400,19 @@ public class MyWatchFace extends CanvasWatchFaceService {
             }
 
         }
+    }
+
+    private Bitmap loadBitmapFromAsset(Asset icon) {
+
+        InputStream inputStream = null;
+
+        if(icon!=null){
+
+            inputStream = Wearable.DataApi.getFdForAsset(googleApiClient, icon).await().getInputStream();
+
+        }
+        return BitmapFactory.decodeStream(inputStream);
+
+
     }
 }

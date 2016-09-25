@@ -20,11 +20,8 @@ android {
     }
 
    buildTypes.each {
-<<<<<<< HEAD
-        it.buildConfigField 'String', 'OPEN_WEATHER_MAP_API_KEY', "\"Enter API KEY\""
-=======
-        it.buildConfigField 'String', 'OPEN_WEATHER_MAP_API_KEY', "\"Enter API KEY here\""
->>>>>>> 34041442a8505be1052317669f519d32eb436bc3
+
+        it.buildConfigField 'String', 'OPEN_WEATHER_MAP_API_KEY', "\"Enter Api Key\""
    }
 }
 
@@ -41,5 +38,6 @@ dependencies {
     compile 'com.google.android.gms:play-services-gcm:8.1.0'
     compile 'com.google.android.gms:play-services-location:8.1.0'
     compile 'com.google.android.gms:play-services-wearable:8.1.0'
+    wearApp project(':wearable')
 
 }
