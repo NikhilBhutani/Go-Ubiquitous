@@ -28,6 +28,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -72,6 +73,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
     private static final String TEMPERATURE_LOW_KEY = "temp_low_key";
     private static final String TEMPERATURE_ICON_KEY = "icon_key";
     protected GoogleApiClient googleApiClient;
+    InputStream inpStream;
     /**
      * Update rate in milliseconds for interactive mode. We update once a second since seconds are
      * displayed in interactive mode.
@@ -109,7 +111,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
     }
 
     private class Engine extends CanvasWatchFaceService.Engine implements
-            GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, DataApi.DataListener{
+            GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, DataApi.DataListener {
 
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
@@ -301,7 +303,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 canvas.drawColor(Color.BLACK);
             } else {
 
-               canvas.drawRect(0, 0, bounds.width(), bounds.height(), mBackgroundPaint);
+                canvas.drawRect(0, 0, bounds.width(), bounds.height(), mBackgroundPaint);
             }
 
             // Draw H:MM in ambient mode or H:MM:SS in interactive mode.
@@ -312,12 +314,22 @@ public class MyWatchFace extends CanvasWatchFaceService {
                     mCalendar.get(Calendar.MINUTE))
                     : String.format("%02d:%02d:%02d", mCalendar.get(Calendar.HOUR),
                     mCalendar.get(Calendar.MINUTE), mCalendar.get(Calendar.SECOND));
-            if(!mAmbient){
+            if (!mAmbient) {
 
                 String day = SimpleDateFormat.getDateInstance(DateFormat.MEDIUM).format(mCalendar.getTimeInMillis());
-                canvas.drawText(day, bounds.centerX()-60, mDayDateYOffset, mDayDateTextPaint);
+                canvas.drawText(day, bounds.centerX() - 60, mDayDateYOffset, mDayDateTextPaint);
                 canvas.drawLine((bounds.width() / 2) - 30, (bounds.height() / 2) + 10, (bounds.width() / 2) + 30, (bounds.height() / 2) + 10, linePaint);
-                if(weatherIcon != null){
+
+                if (highTempWeather != null) {
+                    canvas.drawText(highTempWeather, bounds.centerX() - 25, bounds.centerY() + 45, mDayDateTextPaint);
+                }
+
+                if (lowTempWeather != null) {
+                    canvas.drawText(lowTempWeather, bounds.centerX() + 5, bounds.centerY() + 45, mDayDateTextPaint);
+
+                }
+                if (weatherIcon != null) {
+                    Log.v(LOG_TAG, " Received Weather Icon");
                     Paint paint = new Paint();
                     canvas.drawBitmap(weatherIcon, bounds.width() / 5, (bounds.height() / 2.0f) + mXOffset, paint);
                 }
@@ -379,18 +391,18 @@ public class MyWatchFace extends CanvasWatchFaceService {
 
             Log.v("Here you go ", "Data Synced");
 
-            for(DataEvent event : dataEventBuffer){
-                if(DataEvent.TYPE_CHANGED == event.getType()){
-                  //  final DataItem item = event.getDataItem();
+            for (DataEvent event : dataEventBuffer) {
+                if (DataEvent.TYPE_CHANGED == event.getType()) {
+                    //  final DataItem item = event.getDataItem();
                     String path = event.getDataItem().getUri().getPath();
-                    if(WEATHER_CONFIG_PATH.equals(path)){
+                    if (WEATHER_CONFIG_PATH.equals(path)) {
                         DataMapItem dataMapItem = DataMapItem.fromDataItem(event.getDataItem());
                         highTempWeather = dataMapItem.getDataMap().getString(TEMPERATURE_HIGH_KEY);
                         lowTempWeather = dataMapItem.getDataMap().getString(TEMPERATURE_LOW_KEY);
                         Asset icon = dataMapItem.getDataMap().getAsset(TEMPERATURE_ICON_KEY);
                         weatherIcon = loadBitmapFromAsset(icon);
 
-                        System.out.println("YAAAAAAAAAAAYYY! onDatachanged"+highTempWeather+" "+lowTempWeather);
+                        System.out.println("YAAAAAAAAAAAYYY! onDatachanged" + highTempWeather + " " + lowTempWeather);
 
                     }
 
@@ -400,19 +412,41 @@ public class MyWatchFace extends CanvasWatchFaceService {
             }
 
         }
+
+
     }
 
-    private Bitmap loadBitmapFromAsset(Asset icon) {
 
-        InputStream inputStream = null;
+    private Bitmap loadBitmapFromAsset(final Asset icon) {
 
-        if(icon!=null){
-
-            inputStream = Wearable.DataApi.getFdForAsset(googleApiClient, icon).await().getInputStream();
-
+        if (icon == null) {
+                   return  null;
         }
-        return BitmapFactory.decodeStream(inputStream);
 
+        new GetImageTaks().execute(icon);
 
+        return BitmapFactory.decodeStream(inpStream);
     }
+
+    class GetImageTaks extends AsyncTask<Asset, Void, InputStream>{
+
+
+        @Override
+        protected InputStream doInBackground(Asset... assets) {
+            return Wearable.DataApi.getFdForAsset(googleApiClient,assets[0]).await().getInputStream();
+        }
+
+        @Override
+        protected void onPostExecute(InputStream inputStream) {
+            super.onPostExecute(inputStream);
+
+           inpStream = inputStream;
+        }
+    }
+
 }
+
+
+
+
+
