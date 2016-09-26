@@ -1,4 +1,4 @@
-GoUbiquitous-Android Face Watch For Wearables
+GoUbiquitous-Android Watch Face For Wearables
 ===================================
 
 Built the watch face for Android Wearable devices that synchronizes weather information from OpenWeatherMap on Android Phones and Tablets. This is the the 6th project in Android Developer Nanodegree.
