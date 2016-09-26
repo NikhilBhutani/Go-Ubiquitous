@@ -321,17 +321,17 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 canvas.drawLine((bounds.width() / 2) - 30, (bounds.height() / 2) + 10, (bounds.width() / 2) + 30, (bounds.height() / 2) + 10, linePaint);
 
                 if (highTempWeather != null) {
-                    canvas.drawText(highTempWeather, bounds.centerX() - 25, bounds.centerY() + 45, mDayDateTextPaint);
+                    canvas.drawText(highTempWeather, bounds.centerX() + 30, bounds.centerY() + 40, mDayDateTextPaint);
                 }
 
                 if (lowTempWeather != null) {
-                    canvas.drawText(lowTempWeather, bounds.centerX() + 5, bounds.centerY() + 45, mDayDateTextPaint);
+                    canvas.drawText(lowTempWeather, bounds.centerX() + 60, bounds.centerY() + 40, mDayDateTextPaint);
 
                 }
                 if (weatherIcon != null) {
                     Log.v(LOG_TAG, " Received Weather Icon");
                     Paint paint = new Paint();
-                    canvas.drawBitmap(weatherIcon, bounds.width() / 5, (bounds.height() / 2.0f) + mXOffset, paint);
+                    canvas.drawBitmap(weatherIcon, bounds.width() / 5, (bounds.height() / 4.0f) + mXOffset, paint);
                 }
             }
 
